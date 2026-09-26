@@ -94,3 +94,81 @@ class BatchResponse(BaseModel):
     succeeded: int
     failed: int
     items: list[BatchItemResponse]
+
+
+# ---------------------------------------------------------------------------
+# 目标反推（inverse）
+# ---------------------------------------------------------------------------
+
+
+class InverseStageRequest(BaseModel):
+    """反推请求中自下而上排列的单级确定量；推进剂是待求未知量。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ve: float = Field(..., description="有效排气速度 m/s，必须 > 0")
+    structural_mass: float = Field(..., description="本级结构空重 kg，>= 0")
+    burn_time: float = Field(..., description="有效工作时间 s，必须 > 0")
+    propellant_min: float = Field(
+        ..., description="该级允许加注推进剂的下限 kg，必须 > 0（需能回代前向核算）"
+    )
+    propellant_max: float = Field(
+        ..., description="该级允许加注推进剂的上限 kg，必须 >= propellant_min"
+    )
+
+
+class InverseRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_net_delta_v: float = Field(
+        ..., description="任务书要求的净速度增量目标 m/s，>= 0"
+    )
+    payload_mass: float = Field(..., description="最终有效载荷质量 kg，>= 0")
+    stages: list[InverseStageRequest] = Field(
+        ..., description="自下而上的各级确定量与加注上下限，至少一级"
+    )
+    tolerance: float | None = Field(
+        None,
+        description="达成净 Δv 与目标允许的偏差带 m/s，必须 > 0；缺省 1e-3",
+    )
+    propellant_budget: float | None = Field(
+        None, description="可选的推进剂总预算上限 kg，>= 各级下限之和"
+    )
+
+
+class InverseStageResult(BaseModel):
+    index: int
+    ve: float
+    structural_mass: float
+    burn_time: float
+    propellant_mass: float
+    propellant_min: float
+    propellant_max: float
+    m0: float
+    mf: float
+    upper_mass: float
+    mass_ratio: float
+    ideal_delta_v: float
+    gravity_loss: float
+
+
+class InverseSolvedResponse(BaseModel):
+    """反推成功（solved）响应的字段说明；实际响应体为 dict，状态随结局而变。"""
+
+    status: Literal["solved", "infeasible"]
+    target_net_delta_v: float
+    achieved_net_delta_v: float | None
+    deviation: float | None
+    within_tolerance: bool
+    tolerance: float
+    payload_mass: float
+    total_propellant_mass: float | None
+    propellant_budget: float | None
+    sweeps: int
+    forward_evaluations: int
+    stages: list[InverseStageResult]
+    infeasible_reason_code: str | None = None
+    limiting_constraint: str | None = None
+    stages_at_max: list[int] | None = None
+    budget_exhausted: bool | None = None
+    reason: str | None = None

@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.api import batch, delta_v, reference
+from app.api import batch, delta_v, inverse, reference
 from app.core.constants import SERVICE_PORT
 from app.core.errors import REQUEST_VALIDATION, RocketValidationError
 from app.services.reference import format_reference_report, run_reference
@@ -41,6 +41,7 @@ app = FastAPI(
 )
 app.include_router(delta_v.router, prefix=API_PREFIX)
 app.include_router(batch.router, prefix=API_PREFIX)
+app.include_router(inverse.router, prefix=API_PREFIX)
 app.include_router(reference.router, prefix=API_PREFIX)
 
 
@@ -84,6 +85,7 @@ def root() -> dict[str, object]:
         "endpoints": [
             "POST /api/v1/delta-v",
             "POST /api/v1/delta-v/batch",
+            "POST /api/v1/delta-v/inverse",
             "GET  /api/v1/reference/example",
             "GET  /health",
         ],
