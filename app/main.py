@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.api import batch, delta_v, reference
+from app.api import batch, delta_v, inverse, reference
 from app.core.constants import SERVICE_PORT
 from app.core.errors import REQUEST_VALIDATION, RocketValidationError
 from app.services.reference import format_reference_report, run_reference
@@ -31,16 +31,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="多级火箭速度增量核算引擎",
-    version="1.0.0",
+    version="1.1.0",
     description=(
         "常驻的齐奥尔科夫斯基预算 HTTP 服务。范围限定为质量比与速度增量核算："
         "逐级 Δv 相加、重力损失 g·t_burn 扣除、可选轻量阻力扣减，"
-        "并提供批量候选构型比选与内置两级参考算例。"
+        "提供批量候选构型比选、内置两级参考算例，"
+        "以及给定目标净速度增量反推各级推进剂加注量的反解能力。"
     ),
     lifespan=lifespan,
 )
 app.include_router(delta_v.router, prefix=API_PREFIX)
 app.include_router(batch.router, prefix=API_PREFIX)
+app.include_router(inverse.router, prefix=API_PREFIX)
 app.include_router(reference.router, prefix=API_PREFIX)
 
 
@@ -78,12 +80,13 @@ def health() -> dict[str, str]:
 def root() -> dict[str, object]:
     return {
         "service": "multi-stage-rocket-delta-v-engine",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "port": SERVICE_PORT,
         "api_prefix": API_PREFIX,
         "endpoints": [
             "POST /api/v1/delta-v",
             "POST /api/v1/delta-v/batch",
+            "POST /api/v1/inverse/solve",
             "GET  /api/v1/reference/example",
             "GET  /health",
         ],
